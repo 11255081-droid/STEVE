@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Roblox V54 - Full Logic Repair</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+        
+        :root { 
+            --bg: #212529; --panel: #2c3035; --primary: #4dabf7; --accent: #ffd43b; 
+            --danger: #ff6b6b; --success: #51cf66; --text: #e9ecef; --font: 'Fredoka', sans-serif;
+            --shadow-flat: 4px 4px 8px rgba(0,0,0,0.3), -1px -1px 2px rgba(255,255,255,0.05);
+            --btn-grad: linear-gradient(145deg, #3a3f45, #25282d);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body { margin: 0; background: #1a1b1e; color: var(--text); font-family: var(--font); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        
+        .layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background: var(--bg); z-index: 10; flex-direction: column; }
+        .layer.active { display: flex; }
+        
+        button { background: var(--btn-grad); border: 1px solid #444; color: #fff; padding: 10px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; box-shadow: var(--shadow-flat); font-family: var(--font); transition: 0.1s; }
+        button:active { transform: translateY(2px); box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5); }
+        button.primary { background: linear-gradient(145deg, #339af0, #228be6); border:none; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+
+        #l-login { justify-content: center; align-items: center; text-align: center; background: radial-gradient(circle at 50% 30%, #333 0%, #000 100%); }
+        .box { background: var(--panel); padding: 2.5rem; border-radius: 24px; width: 90%; max-width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.05); }
+        input { background: #1a1a1a; border: none; color: #fff; padding: 15px; width: 100%; border-radius: 12px; margin: 20px 0; text-align: center; font-size: 1.1rem; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5); }
+        
+        header { padding: 10px 15px; background: #25262b; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .u-info { display: flex; flex-direction: column; gap: 4px; }
+        .res { display: flex; gap: 10px; font-size: 0.9rem; }
+        .res-box { background: #1a1a1a; padding: 4px 12px; border-radius: 20px; display:flex; align-items:center; gap:5px; border:1px solid #333; box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5); }
+        
+        .exp-wrap { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #888; }
+        .exp-bar { width: 80px; height: 6px; background: #111; border-radius: 3px; overflow: hidden; position: relative; box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5); }
+        .exp-fill { height: 100%; background: linear-gradient(90deg, #4dabf7, #228be6); width: 0%; transition: 0.3s; }
+
+        .nav { display: flex; background: #1c1c1c; padding: 8px; gap: 8px; overflow-x: auto; flex-shrink: 0; }
+        .tab { padding: 10px 16px; border-radius: 12px; color: #888; cursor: pointer; white-space: nowrap; flex: 1; text-align: center; transition:0.2s; font-size: 0.9rem; }
+        .tab.active { background: var(--panel); color: var(--primary); font-weight: bold; box-shadow: var(--shadow-flat); }
+        
+        #content { flex: 1; overflow-y: auto; padding: 15px; position: relative; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; padding-bottom: 80px; }
+        .card { background: linear-gradient(145deg, #2d3036, #26292e); border-radius: 16px; padding: 10px; text-align: center; cursor: pointer; box-shadow: 5px 5px 10px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.02); height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .card:active { transform: scale(0.96); box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5); }
+        .c-icon { font-size: 2.2rem; margin-bottom: 8px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
+        .c-txt { font-size: 0.8rem; font-weight: 600; color: #ccc; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .item-tag { position: absolute; top:6px; right:6px; font-size:0.6rem; padding:2px 6px; border-radius:4px; font-weight:bold; box-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
+        .tag-perm { background: var(--primary); color:#fff; }
+        .tag-con { background: var(--accent); color:#000; }
+        
+        #p-gacha { display:none; flex-direction:column; align-items:center; justify-content:center; height:100%; text-align:center; }
+        .gacha-machine { width: 240px; height: 340px; background: linear-gradient(180deg, #ff6b6b, #c92a2a); border-radius: 40px 40px 20px 20px; padding: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.6), inset 5px 5px 10px rgba(255,255,255,0.2); display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; position: relative; }
+        .gm-glass { width: 150px; height: 150px; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0.1) 50%, #333 100%); border-radius: 50%; border: 5px solid #a61e4d; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; box-shadow: inset 0 0 20px #000; }
+        .gm-knob { width: 80px; height: 80px; background: #eee; border-radius: 50%; margin-top: 25px; border: 4px solid #adb5bd; cursor: pointer; display:flex; align-items:center; justify-content:center; box-shadow: 0 6px 0 #868e96; transition:0.1s; }
+        .gm-knob:active { transform: rotate(180deg); box-shadow: 0 2px 0 #868e96; margin-top: 29px; }
+        .gm-knob::after { content:''; width: 60px; height: 12px; background: #ced4da; transform: rotate(90deg); border-radius: 6px; }
+
+        #g-hud { position: absolute; top: 0; left: 0; width: 100%; padding: 15px; display: flex; justify-content: space-between; pointer-events: none; z-index: 20; text-shadow: 1px 1px 2px #000; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
+        .g-buffs { display: flex; gap: 6px; margin-top: 5px; }
+        .buff { width: 28px; height: 28px; background: rgba(0,0,0,0.6); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.9rem; border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        canvas { display: block; width: 100%; height: 100%; background: #111; }
+        
+        #g-ctrl { position: absolute; bottom: 0; left: 0; width: 100%; height: 200px; pointer-events: none; z-index: 20; display: flex; justify-content: space-between; padding: 20px; padding-bottom: 40px; }
+        .dpad { width: 150px; height: 150px; position: relative; pointer-events: auto; }
+        .btn-c { width: 50px; height: 50px; background: rgba(255,255,255,0.15); border-radius: 14px; position: absolute; display: flex; justify-content: center; align-items: center; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(5px); color:#eee; font-size: 1.2rem; }
+        .btn-c:active { background: var(--primary); color:#fff; transform: scale(0.95); }
+        .c-u { top: 0; left: 50px; } .c-d { bottom: 0; left: 50px; } .c-l { top: 50px; left: 0; } .c-r { top: 50px; right: 0; }
+        .acts { display: flex; gap: 20px; align-items: flex-end; pointer-events: auto; }
+        .btn-act { width: 85px; height: 85px; border-radius: 50%; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:1.8rem; box-shadow: 0 8px 20px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); text-shadow: 0 2px 2px rgba(0,0,0,0.5); }
+        .btn-act:active { transform: scale(0.95); box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); }
+        .btn-a { background: radial-gradient(circle at 30% 30%, #51cf66, #2b8a3e); } 
+        .btn-b { background: radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a); width: 65px; height: 65px; margin-bottom: 10px; font-size: 1.4rem; }
+        
+        #p-ai { display: none; flex-direction: column; height: 100%; }
+        .chat-hist { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+        .msg { padding: 12px 16px; border-radius: 16px; max-width: 85%; font-size: 0.95rem; line-height: 1.5; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); }
+        .m-ai { background: #3a3f45; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .m-usr { background: var(--primary); align-self: flex-end; color: #fff; border-bottom-right-radius: 2px; }
+
+        .modal-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; display: none; justify-content: center; align-items: center; backdrop-filter: blur(8px); }
+        .modal-wrap.active { display: flex; }
+        .modal { background: var(--panel); width: 85%; max-width: 340px; border-radius: 24px; padding: 25px; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
+        .diff-opt { padding: 15px; margin: 10px 0; background: #222; border: 1px solid #444; border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; transition: 0.2s; }
+        .diff-opt:hover { border-color: var(--primary); background: #2a2a2a; }
+        .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.95); padding: 12px 30px; border-radius: 30px; z-index: 200; display: none; border: 1px solid var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="l-login" class="layer active">
+        <div class="box">
+            <h1 style="color:var(--primary); margin:0; text-shadow: 0 0 15px rgba(77,171,247,0.5);">ROBLOX V54</h1>
+            <p style="color:#888; margin-bottom:20px; letter-spacing:1px;">FULL LOGIC REPAIR</p>
+            <input type="text" id="uid" placeholder="Enter Player ID / 輸入 ID" maxlength="12">
+            <button class="primary" onclick="Sys.login()" style="width:100%; font-size:1.2rem; padding:15px;">START GAME</button>
+            <div style="margin-top:20px; font-size:0.8rem; color:#666; cursor:pointer;" onclick="Lang.toggle()">🌐 中文 / English</div>
+        </div>
+    </div>
+
+    <div id="l-menu" class="layer">
+        <header>
+            <div class="u-info">
+                <div style="font-weight:bold; color:var(--primary); font-size:1.1rem;" id="m-id">Guest</div>
+                <div class="exp-wrap">
+                    LV.<span id="m-lv">1</span>
+                    <div class="exp-bar"><div class="exp-fill" id="m-exp"></div></div>
+                </div>
+            </div>
+            <div class="res">
+                <div class="res-box"><span style="font-size:1.2rem">🪙</span> <span id="m-coin">0</span></div>
+                <div class="res-box"><span style="font-size:1.2rem">💎</span> <span id="m-gem">0</span></div>
+            </div>
+        </header>
+        <div class="nav">
+            <div class="tab active" onclick="Menu.sw('games',this)" data-t="tab_games">GAMES</div>
+            <div class="tab" onclick="Menu.sw('gacha',this)" data-t="tab_gacha">GACHA</div>
+            <div class="tab" onclick="Menu.sw('shop',this)" data-t="tab_shop">SHOP</div>
+            <div class="tab" onclick="Menu.sw('bag',this)" data-t="tab_bag">BAG</div>
+            <div class="tab" onclick="Menu.sw('ai',this)" data-t="tab_ai">AI</div>
+        </div>
+        <div id="content">
+            <div id="p-games" class="grid"></div>
+            
+            <div id="p-gacha">
+                <h2 style="color:var(--accent); text-shadow:0 0 10px rgba(255,212,59,0.3);">LUCKY GACHA</h2>
+                <div class="gacha-machine">
+                    <div class="gm-glass" id="gm-glass">🎁</div>
+                    <div class="gm-knob" onclick="Sys.gacha()"></div>
+                </div>
+                <p style="color:#aaa; font-weight:bold;">Cost: $200</p>
+                <button class="primary" onclick="Sys.gacha()" style="width:150px; font-size:1.2rem;">PULL x1</button>
+            </div>
+
+            <div id="p-shop" class="grid" style="display:none"></div>
+            <div id="p-bag" class="grid" style="display:none"></div>
+            
+            <div id="p-ai">
+                <div class="chat-hist" id="chat-hist">
+                    <div class="msg m-ai">Hello! I'm your AI assistant. Ask me anything!<br>你好！我是 AI 助手，請問需要什麼幫助？</div>
+                </div>
+                <div style="display:flex; gap:10px; padding:10px; background:#25262b; border-radius:12px; margin-top:10px;">
+                    <input type="text" id="chat-in" placeholder="..." style="margin:0; text-align:left; background:transparent; border:none; box-shadow:none; flex:1;">
+                    <button onclick="AI.ask()" style="width:auto; padding:5px 15px;">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="l-game" class="layer">
+        <div id="g-hud">
+            <div>
+                <div style="font-size:1.5rem; color:#ffd43b; text-shadow:0 2px 5px rgba(0,0,0,0.8);">🏆 <span id="g-sc">0</span></div>
+                <div class="g-buffs" id="g-buffs"></div>
+            </div>
+            <div style="text-align:right">
+                <div style="font-size:0.9rem; color:#aaa;">STAGE <span id="g-st" style="color:#fff; font-size:1.2rem;">1</span></div>
+                <div style="color:var(--danger); font-weight:bold; font-size:1.2rem; text-shadow:0 0 5px rgba(255,107,107,0.5);">HP <span id="g-hp">100</span></div>
+            </div>
+        </div>
+        <canvas id="cvs"></canvas>
+        <div id="g-ctrl">
+            <div class="dpad">
+                <div class="btn-c c-u" data-k="ArrowUp">▲</div>
+                <div class="btn-c c-d" data-k="ArrowDown">▼</div>
+                <div class="btn-c c-l" data-k="ArrowLeft">◀</div>
+                <div class="btn-c c-r" data-k="ArrowRight">▶</div>
+            </div>
+            <div class="acts">
+                <div class="btn-act btn-b" data-k="KeyX">B</div>
+                <div class="btn-act btn-a" data-k="KeyZ">A</div>
+            </div>
+        </div>
+        <button style="position:absolute; top:20px; right:20px; width:45px; height:45px; background:rgba(255,255,255,0.1); backdrop-filter:blur(5px); border-radius:12px; padding:0; z-index:30; font-size:1.2rem; border:1px solid rgba(255,255,255,0.2);" onclick="Eng.pause()">⏸</button>
+    </div>
+
+    <div id="l-modal" class="modal-wrap">
+        <div class="modal">
+            <h2 id="mo-t" style="color:var(--primary); margin-top:0;">Title</h2>
+            <div id="mo-b" style="color:#ccc; margin-bottom:20px; font-size:0.95rem; line-height:1.6;">Body</div>
+            <div id="mo-f" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast">Msg</div>
+
+<script>
+// --- 0. DATA DEFINITIONS ---
+var GamesList = [
+    {id:1, n:'Maze Run', i:'🧩'}, {id:2, n:'Snake', i:'🐍'}, {id:3, n:'Pong', i:'🏓'}, {id:4, n:'Breakout', i:'🧱'},
+    {id:5, n:'Dodger', i:'🏃'}, {id:6, n:'Space War', i:'🚀'}, {id:7, n:'Flappy', i:'🐦'}, {id:8, n:'Jumper', i:'🦘'},
+    {id:9, n:'Catcher', i:'🧺'}, {id:10, n:'Memory', i:'🧠'}, {id:11, n:'Math Quiz', i:'➕'}, {id:12, n:'Clicker', i:'👆'},
+    {id:13, n:'Rhythm', i:'🎵'}, {id:14, n:'Tank', i:'🚜'}, {id:15, n:'Frogger', i:'🐸'}, {id:16, n:'Defense', i:'🛡️'},
+    {id:17, n:'Ninja', i:'⚔️'}, {id:18, n:'Mines', i:'💣'}, {id:19, n:'2048', i:'🔢'}, {id:20, n:'Slot', i:'🎰'},
+    {id:21, n:'Fishing', i:'🎣'}, {id:22, n:'Balloon', i:'🎈'}, {id:23, n:'Whack', i:'🔨'}, {id:24, n:'Lander', i:'🌑'},
+    {id:25, n:'Stacker', i:'🏗️'}, {id:26, n:'Match 3', i:'💎'}, {id:27, n:'Sudoku', i:'📅'}, {id:28, n:'Typing', i:'⌨️'},
+    {id:29, n:'Color', i:'🎨'}, {id:30, n:'Orbit', i:'🪐'}, {id:31, n:'Sniper', i:'🎯'}, {id:32, n:'Invader', i:'👾'},
+    {id:33, n:'Drop', i:'💧'}, {id:34, n:'Squash', i:'🎾'}, {id:35, n:'Maze 3D', i:'🧊'}, {id:36, n:'Racer', i:'🏎️'},
+    {id:37, n:'Climb', i:'🪜'}, {id:38, n:'Simon', i:'🔔'}, {id:39, n:'Snake 2', i:'🐉'}, {id:40, n:'Boss', i:'👹'}
+];
+
+var Storage = { get: function(k) { try { return localStorage.getItem(k); } catch(e) { return window['_temp_'+k]; } }, set: function(k,v) { try { localStorage.setItem(k,v); } catch(e) { window['_temp_'+k] = v; } } };
+
+var Lang = {
+    data: {
+        "zh-TW": {
+            tab_games: "遊戲", tab_shop: "商店", tab_bag: "背包", tab_ai: "AI", tab_gacha: "轉蛋",
+            diff_sel: "選擇挑戰難度", diff_1: "簡單", diff_2: "普通", diff_3: "困難",
+            win: "闖關成功！", fail: "挑戰失敗", next: "下一關", retry: "重試", quit: "退出",
+            bag_empty: "背包空空的...", bought: "購買成功！", nomoney: "金幣不足！", owned: "已擁有",
+            item_hp: "生命藥水 (+50 HP)", item_rev: "復活十字架 (自動)", item_spd: "速度之靴 (永久)", 
+            item_mag: "磁鐵 (永久)", item_shield: "能量護盾 (擋傷)", item_luck: "幸運草 (金幣+50%)", 
+            item_exp: "智慧之書 (經驗+50%)", item_slow: "時光懷錶 (緩速20%)", item_regen: "再生之心 (回血)", 
+            item_maxhp: "泰坦腰帶 (+50上限)", item_skin1: "黃金主題", item_skin2: "鑽石主題",
+            gacha_t: "幸運轉蛋", gacha_open: "轉動中...", gacha_get: "恭喜獲得！"
+        },
+        "en": {
+            tab_games: "GAMES", tab_shop: "SHOP", tab_bag: "BAG", tab_ai: "AI", tab_gacha: "GACHA",
+            diff_sel: "Select Difficulty", diff_1: "Easy", diff_2: "Normal", diff_3: "Hard",
+            win: "Stage Clear!", fail: "Game Over", next: "Next Stage", retry: "Retry", quit: "Quit",
+            bag_empty: "Empty Bag...", bought: "Purchased!", nomoney: "No Money!", owned: "Owned",
+            item_hp: "HP Potion (+50)", item_rev: "Revive Cross", item_spd: "Speed Boots", 
+            item_mag: "Magnet", item_shield: "Shield", item_luck: "Luck Clover", 
+            item_exp: "Wisdom Book", item_slow: "Stopwatch", item_regen: "Regen Heart", 
+            item_maxhp: "Titan Belt", item_skin1: "Gold Theme", item_skin2: "Diamond Theme",
+            gacha_t: "Lucky Gacha", gacha_open: "Spinning...", gacha_get: "You Got!"
+        }
+    },
+    get cur() { return Storage.get('rbx_lang') || 'zh-TW'; },
+    t: function(k) { return this.data[this.cur][k] || k; },
+    toggle: function() { var n = this.cur==='zh-TW'?'en':'zh-TW'; Storage.set('rbx_lang', n); this.apply(); },
+    apply: function() { document.querySelectorAll('[data-t]').forEach(function(el) { el.innerText = Lang.t(el.dataset.t); }); Menu.init(); }
+};
+
+var Sys = {
+    u: { id:'Guest', coins:500, gems:10, lv:1, exp:0, bag:[], spd:0, theme:'def' },
+    items: [
+        {id:'hp', t:'item_hp', p:100, i:'❤️', type:'con'},
+        {id:'rev', t:'item_rev', p:500, i:'✝️', type:'con'},
+        {id:'spd', t:'item_spd', p:1000, i:'👟', type:'perm'},
+        {id:'mag', t:'item_mag', p:1500, i:'🧲', type:'perm'},
+        {id:'shield', t:'item_shield', p:2000, i:'🛡️', type:'perm'},
+        {id:'luck', t:'item_luck', p:3000, i:'🍀', type:'perm'},
+        {id:'exp', t:'item_exp', p:3000, i:'📘', type:'perm'},
+        {id:'slow', t:'item_slow', p:3500, i:'❄️', type:'perm'},
+        {id:'regen', t:'item_regen', p:4000, i:'💖', type:'perm'},
+        {id:'maxhp', t:'item_maxhp', p:4500, i:'🥋', type:'perm'},
+        {id:'skin1', t:'item_skin1', p:5000, i:'🏆', type:'skin'}
+    ],
+    login: function() {
+        var id = document.getElementById('uid').value.trim() || "Guest";
+        var sv = Storage.get('rbx_v54_'+id);
+        if(sv) this.u = JSON.parse(sv);
+        this.u.id = id;
+        if(!this.u.bag) this.u.bag=[];
+        this.upd(); Lang.apply(); Layer.sw('l-menu');
+        this.applyTheme();
+    },
+    save: function() { Storage.set('rbx_v54_'+this.u.id, JSON.stringify(this.u)); this.upd(); },
+    upd: function() {
+        document.getElementById('m-id').innerText = this.u.id;
+        document.getElementById('m-coin').innerText = this.u.coins;
+        document.getElementById('m-gem').innerText = this.u.gems;
+        document.getElementById('m-lv').innerText = this.u.lv;
+        document.getElementById('m-exp').style.width = Math.min(100, (this.u.exp/(this.u.lv*100))*100) + '%';
+    },
+    gacha: function() {
+        if(this.u.coins < 200) return toast(Lang.t('nomoney'), true);
+        this.u.coins -= 200;
+        this.save();
+        var gl = document.getElementById('gm-glass');
+        gl.innerHTML = "🎲"; gl.style.animation = "shake 0.5s infinite";
+        setTimeout(function(){
+            gl.style.animation = "";
+            var r = Math.random(), msg="", icon="";
+            if(r<0.35) { var c=100+Math.floor(Math.random()*300); Sys.u.coins+=c; msg=`+${c} Coins`; icon="🪙"; }
+            else if(r<0.55) { var g=10+Math.floor(Math.random()*30); Sys.u.gems+=g; msg=`+${g} Gems`; icon="💎"; }
+            else { 
+                var it = Sys.items[Math.floor(Math.random()*Sys.items.length)];
+                if(it.type!=='con' && Sys.has(it.id)) { Sys.u.coins+=500; msg="Refund $500"; icon="🪙"; }
+                else { Sys.u.bag.push(it.id); msg=Lang.t(it.t); icon=it.i; if(it.type==='skin') Sys.applyTheme(); }
+            }
+            gl.innerHTML = icon;
+            Sys.save(); Menu.init();
+            Layer.modal(Lang.t('gacha_get'), `<div style='font-size:3rem'>${icon}</div><br><b>${msg}</b>`, `<button class="primary" onclick="Layer.close()">OK</button>`);
+        }, 1000);
+    },
+    buy: function(i) {
+        var it = this.items[i];
+        if(this.u.coins >= it.p) {
+            if(it.type!=='con' && this.u.bag.includes(it.id)) return toast(Lang.t('owned'));
+            this.u.coins -= it.p; this.u.bag.push(it.id);
+            if(it.id==='spd') this.u.spd=1;
+            if(it.type==='skin') this.applyTheme();
+            this.save(); Menu.init(); toast(Lang.t('bought'));
+        } else toast(Lang.t('nomoney'), true);
+    },
+    has: function(id){ return this.u.bag.includes(id); },
+    use: function(id){ var i=this.u.bag.indexOf(id); if(i>-1){ this.u.bag.splice(i,1); this.save(); return true; } return false; },
+    applyTheme: function() {
+        document.body.className = '';
+        if(this.u.bag.includes('skin1')) document.body.classList.add('theme-gold');
+    }
+};
+
+var Menu = {
+    init: function() {
+        var g = document.getElementById('p-games'); g.innerHTML = '';
+        GamesList.forEach(function(x){ g.innerHTML += `<div class="card" onclick="Menu.sel(${x.id})"><div class="c-icon">${x.i}</div><div class="c-txt">${x.id}. ${x.n}</div></div>`; });
+        var s = document.getElementById('p-shop'); s.innerHTML = '';
+        Sys.items.forEach(function(x,i){ 
+            var own = x.type!=='con' && Sys.has(x.id);
+            var tag = x.type==='con' ? 'Con' : 'Perm';
+            var col = x.type==='con' ? 'tag-con' : 'tag-perm';
+            s.innerHTML += `<div class="card" onclick="Sys.buy(${i})" style="opacity:${own?0.5:1}"><div class="item-tag ${col}">${tag}</div><div class="c-icon">${x.i}</div><div class="c-txt">${Lang.t(x.t)}</div><div style="color:var(--accent);font-size:0.9rem">$${x.p}</div></div>`; 
+        });
+        var b = document.getElementById('p-bag');
+        var bagItems = Sys.u.bag.map(function(id){return Sys.items.find(function(x){return x.id==id})}).filter(function(x){return x});
+        b.innerHTML = bagItems.map(function(it){ return `<div class="card"><div class="c-icon">${it.i}</div><div class="c-txt">${Lang.t(it.t)}</div></div>`}).join('') || '<div style="color:#666; grid-column:1/-1; text-align:center">'+Lang.t('bag_empty')+'</div>';
+    },
+    sw: function(t, el) {
+        document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')}); if(el) el.classList.add('active');
+        ['games','gacha','shop','bag','ai'].forEach(function(x){document.getElementById('p-'+x).style.display='none'});
+        document.getElementById('p-'+t).style.display = (t==='gacha' || t==='ai')?'flex':'grid';
+    },
+    sel: function(id) {
+        Layer.modal(Lang.t('diff_sel'), "", `
+            <div class="diff-opt" onclick="Eng.start(${id},1)"><span>${Lang.t('diff_1')}</span><span style="color:#aaa">x1.0</span></div>
+            <div class="diff-opt" onclick="Eng.start(${id},2)" style="border-color:#4dabf7"><span>${Lang.t('diff_2')}</span><span style="color:#aaa">x1.5</span></div>
+            <div class="diff-opt" onclick="Eng.start(${id},3)" style="border-color:#ff6b6b"><span>${Lang.t('diff_3')}</span><span style="color:#aaa">x2.5</span></div>
+            <button style="margin-top:10px; background:transparent" onclick="Layer.close()">Cancel</button>
+        `);
+    }
+};
+
+var Layer = {
+    sw: function(id) { document.querySelectorAll('.layer').forEach(function(l){l.classList.remove('active')}); document.getElementById(id).classList.add('active'); },
+    modal: function(t,b,f) { document.getElementById('mo-t').innerHTML=t; document.getElementById('mo-b').innerHTML=b; document.getElementById('mo-f').innerHTML=f; document.getElementById('l-modal').classList.add('active'); },
+    close: function() { document.getElementById('l-modal').classList.remove('active'); }
+};
+var toast = function(m,e) { var t=document.getElementById('toast'); t.innerText=m; t.style.borderColor=e?'#f55':'#555'; t.style.display='block'; setTimeout(function(){t.style.display='none'},2000); };
+
+var Inp = { u:0,d:0,l:0,r:0,a:0,b:0 };
+function k(c,s) { if(['ArrowUp','w'].includes(c)) Inp.u=s; if(['ArrowDown','s'].includes(c)) Inp.d=s; if(['ArrowLeft','a'].includes(c)) Inp.l=s; if(['ArrowRight','d'].includes(c)) Inp.r=s; if(['z',' ','Enter'].includes(c)) Inp.a=s; if(['x'].includes(c)) Inp.b=s; }
+window.onkeydown=function(e){k(e.key,1)}; window.onkeyup=function(e){k(e.key,0)};
+document.querySelectorAll('.btn-c, .btn-act').forEach(function(b){
+    var press = function(e){e.preventDefault(); k(b.dataset.k,1)};
+    var rel = function(e){e.preventDefault(); k(b.dataset.k,0)};
+    b.addEventListener('mousedown', press); b.addEventListener('touchstart', press);
+    b.addEventListener('mouseup', rel); b.addEventListener('touchend', rel);
+});
+
+var Cvs = document.getElementById('cvs'), Ctx = Cvs.getContext('2d');
+var W, H;
+function Res() { W=Cvs.width=Cvs.parentElement.clientWidth; H=Cvs.height=Cvs.parentElement.clientHeight; }
+window.onresize = Res;
+
+var GBase = class {
+    constructor(lv) { 
+        this.blv=lv; this.st=1; this.sc=0; this.hp=100; this.mod=1; this.t=0;
+        this.sh=Sys.has('shield'); this.hasLuck=Sys.has('luck'); this.hasExp=Sys.has('exp'); 
+        this.hasSlow=Sys.has('slow'); this.hasRegen=Sys.has('regen'); this.hasMax=Sys.has('maxhp');
+    }
+    init() { 
+        if(this.hasMax) this.hp += 50;
+        if(Sys.use('hp')) { this.hp += 50; toast("Potion Used: +50HP"); }
+        this.setSt(); this.drawBuffs();
+    }
+    drawBuffs() {
+        var h = '';
+        if(this.sh) h+=`<div class="buff">🛡️</div>`; if(this.hasLuck) h+=`<div class="buff">🍀</div>`;
+        if(this.hasExp) h+=`<div class="buff">📘</div>`; if(this.hasSlow) h+=`<div class="buff">❄️</div>`;
+        if(this.hasRegen) h+=`<div class="buff">💖</div>`; if(this.hasMax) h+=`<div class="buff">🥋</div>`;
+        document.getElementById('g-buffs').innerHTML = h;
+    }
+    setSt() { var factor = this.hasSlow ? 0.05 : 0.1; this.mod = (this.blv*0.5)+(this.st*factor); this.rst(); toast("Stage "+this.st); }
+    rst() {}
+    drawP(x,y,w,h) { Ctx.fillStyle='#4dabf7'; Ctx.beginPath(); Ctx.roundRect(x,y,w,h,5); Ctx.fill(); Ctx.fillStyle='#fff'; Ctx.beginPath(); Ctx.arc(x+w*0.3,y+h*0.4,2,0,6.28); Ctx.fill(); Ctx.beginPath(); Ctx.arc(x+w*0.7,y+h*0.4,2,0,6.28); Ctx.fill(); }
+    drawE(x,y,w,h,c='#ff6b6b') { Ctx.fillStyle=c; Ctx.fillRect(x,y,w,h); Ctx.strokeStyle='rgba(255,255,255,0.3)'; Ctx.strokeRect(x,y,w,h); }
+    hurt(d) { if(this.sh){this.sh=0; this.drawBuffs(); toast("Shield Block!"); return;} this.hp-=d; if(this.hp<=0) Eng.over(0); }
+    win() { 
+        Eng.stop(); 
+        var coin = Math.floor(10*this.mod); if(this.hasLuck) coin = Math.floor(coin*1.5);
+        var exp = 5; if(this.hasExp) exp = Math.floor(exp*1.5);
+        Sys.u.coins+=coin; Sys.u.exp+=exp; Sys.save(); 
+        Layer.modal(Lang.t('win'), `+${coin} Coins, +${exp} Exp`, `<button class="primary" onclick="Eng.next()">${Lang.t('next')}</button><button onclick="Eng.quit()">${Lang.t('quit')}</button>`); 
+    }
+    hit(a,b) { return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+    rnd(n) { return Math.random()*n; }
+    tick() { this.t++; if(this.hasRegen && this.t % 60 === 0 && this.hp < (this.hasMax?150:100)) this.hp++; }
+};
+
+var Eng = {
+    g: null, loopId: 0,
+    start: function(id, lv) {
+        this.stop(); Layer.close(); Layer.sw('l-game'); Res();
+        var C = GC[id] || GC[99];
+        this.g = new C(lv); this.g.init(); this.loop();
+    },
+    next: function() { Layer.close(); if(this.g){this.g.st++; this.g.setSt(); this.loop();} },
+    loop: function() {
+        if(!Eng.g) return;
+        Ctx.clearRect(0,0,W,H);
+        Eng.g.tick(); Eng.g.upd(); Eng.g.drw();
+        document.getElementById('g-sc').innerText = Math.floor(Eng.g.sc);
+        document.getElementById('g-st').innerText = Eng.g.st;
+        document.getElementById('g-hp').innerText = Math.max(0, Math.floor(Eng.g.hp));
+        Eng.loopId = requestAnimationFrame(Eng.loop);
+    },
+    stop: function() { cancelAnimationFrame(this.loopId); },
+    pause: function() { this.stop(); Layer.modal("Paused", "", `<button class="primary" onclick="Layer.close(); Eng.loop()">Resume</button><button onclick="Eng.quit()">Exit</button>`); },
+    over: function(win) { 
+        this.stop(); 
+        if(!win && Sys.use('rev')){ this.g.hp = this.g.hasMax ? 150 : 100; toast("Revived!"); this.loop(); return; } 
+        Layer.modal(win?"WIN":"FAIL", "Score: "+Math.floor(this.g.sc), `<button onclick="Eng.start(${this.g.gid||1},${this.g.blv})">Retry</button><button onclick="Eng.quit()">Quit</button>`); 
+    },
+    quit: function() { this.stop(); this.g=null; Layer.sw('l-menu'); }
+};
+
+// --- 4. GAME LOGIC ---
+var GC = {};
+
+// 1. Maze
+GC[1] = class extends GBase {
+    rst(){ this.p={x:20,y:20,w:20,h:20}; this.g={x:W-40,y:H-40,w:30,h:30}; this.obs=[]; for(var i=0;i<5+this.st*2;i++)this.obs.push({x:this.rnd(W),y:this.rnd(H),w:30+this.rnd(50),h:30+this.rnd(50)});}
+    upd(){ var s=3+(Sys.u.spd?1:0); if(Inp.u)this.p.y-=s; if(Inp.d)this.p.y+=s; if(Inp.l)this.p.x-=s; if(Inp.r)this.p.x+=s; 
+    if(this.obs.some(o=>this.hit(this.p,o))) this.hurt(2); if(this.hit(this.p,this.g)) this.win(); }
+    drw(){ this.drawP(this.p.x,this.p.y,20,20); Ctx.fillStyle='#51cf66'; Ctx.fillRect(this.g.x,this.g.y,30,30); this.obs.forEach(o=>this.drawE(o.x,o.y,o.w,o.h,'#555')); }
+};
+// 2. Snake
+GC[2] = class extends GBase {
+    rst(){ this.sz=20; this.sn=[{x:10,y:10}]; this.d={x:1,y:0}; this.fd={x:5,y:5}; this.tk=0; this.req=5+this.st; this.eat=0; }
+    upd(){ var spd=Math.max(2,(12-(this.mod*2))/(this.hasSlow?0.8:1.0));
+    if(Inp.u&&this.d.y==0)this.d={x:0,y:-1}; if(Inp.d&&this.d.y==0)this.d={x:0,y:1}; if(Inp.l&&this.d.x==0)this.d={x:-1,y:0}; if(Inp.r&&this.d.x==0)this.d={x:1,y:0};
+    if(++this.tk>spd){ this.tk=0; var h={x:this.sn[0].x+this.d.x, y:this.sn[0].y+this.d.y};
+    if(h.x<0||h.x>W/20||h.y<0||h.y>H/20||this.sn.some(s=>s.x==h.x&&s.y==h.y)) return this.hurt(100);
+    this.sn.unshift(h); if(h.x==this.fd.x&&h.y==this.fd.y){this.sc+=10; this.eat++; if(this.magnet)this.sc+=5; this.fd={x:Math.floor(this.rnd(W/20)),y:Math.floor(this.rnd(H/20))};}else this.sn.pop(); if(this.eat>=this.req)this.win(); }}
+    drw(){ this.sn.forEach(s=>this.drawP(s.x*20,s.y*20,18,18)); Ctx.fillStyle='#f00'; Ctx.fillRect(this.fd.x*20,this.fd.y*20,18,18); }
+};
+// 3. Pong
+GC[3] = class extends GBase {
+    rst(){ this.bx=W/2; this.by=H/2; this.vx=4*this.mod; this.vy=4*this.mod; this.py=H/2; this.ph=80; this.cnt=0; }
+    upd(){ if(this.hasSlow){this.vx*=0.9;this.vy*=0.9} if(Inp.u)this.py-=6; if(Inp.d)this.py+=6; this.bx+=this.vx; this.by+=this.vy;
+    if(this.by<0||this.by>H)this.vy*=-1; if(this.bx>W)this.vx*=-1; 
+    if(this.bx<20&&Math.abs(this.by-this.py)<this.ph){this.vx*=-1; this.sc+=10; this.cnt++; if(this.cnt>=3+this.st)this.win();}
+    if(this.bx<0)this.hurt(100); }
+    drw(){ Ctx.fillStyle='#fff'; Ctx.fillRect(10,this.py-40,10,80); Ctx.beginPath(); Ctx.arc(this.bx,this.by,6,0,6.28); Ctx.fill(); }
+};
+// 4. Breakout
+GC[4] = class extends GBase {
+    rst(){ this.bx=W/2; this.by=H/2; this.vx=4*this.mod; this.vy=-4*this.mod; this.px=W/2; this.br=[]; for(var i=0;i<3+this.st;i++)for(var j=0;j<6;j++)this.br.push({x:j*(W/6)+5,y:i*25+30,w:W/6-10,h:20,v:1}); }
+    upd(){ if(Inp.l)this.px-=6; if(Inp.r)this.px+=6; this.bx+=this.vx; this.by+=this.vy;
+    if(this.bx<0||this.bx>W)this.vx*=-1; if(this.by<0)this.vy*=-1;
+    if(this.by>H-30&&Math.abs(this.bx-this.px)<50)this.vy*=-1; if(this.by>H)this.hurt(100);
+    var h=this.br.find(b=>b.v&&this.hit({x:this.bx,y:this.by,w:5,h:5},b)); if(h){h.v=0; this.vy*=-1; this.sc+=10;}
+    if(!this.br.some(b=>b.v))this.win(); }
+    drw(){ Ctx.fillStyle='#fff'; Ctx.fillRect(this.px-50,H-20,100,10); Ctx.beginPath(); Ctx.arc(this.bx,this.by,5,0,6.28); Ctx.fill(); this.br.forEach(b=>{if(b.v)this.drawE(b.x,b.y,b.w,b.h,`hsl(${b.x},70%,60%)`)}); }
+};
+// 5. Dodger
+GC[5] = class extends GBase {
+    rst(){ this.px=W/2; this.es=[]; this.fr=0; }
+    upd(){ if(Inp.l)this.px-=5; if(Inp.r)this.px+=5; if(this.fr++%(40-this.st*2)==0)this.es.push({x:this.rnd(W),y:-20});
+    this.es.forEach(e=>{e.y+=3*this.mod*(this.hasSlow?0.7:1); if(this.hit({x:this.px,y:H-40,w:20,h:20},{x:e.x,y:e.y,w:20,h:20}))this.hurt(100);});
+    this.sc+=0.5; if(this.sc>300+this.st*100)this.win(); }
+    drw(){ this.drawP(this.px,H-40,20,20); this.es.forEach(e=>this.drawE(e.x,e.y,20,20,'#f00')); }
+};
+// 6. Space War
+GC[6] = class extends GBase {
+    rst(){ this.px=W/2; this.bs=[]; this.es=[]; this.fr=0; this.kil=0; }
+    upd(){ if(Inp.l)this.px-=5; if(Inp.r)this.px+=5; if(Inp.a&&this.fr%15==0)this.bs.push({x:this.px+10,y:H-40});
+    if(this.fr++%40==0)this.es.push({x:this.rnd(W-30),y:-30});
+    this.bs.forEach(b=>b.y-=8); var sf=this.hasSlow?0.5:1; this.es.forEach(e=>e.y+=2*sf*this.mod);
+    this.es.forEach((e,i)=>{if(e.y>H)this.hurt(20); this.bs.forEach((b,j)=>{if(this.hit({x:b.x,y:b.y,w:5,h:10},e)){this.es.splice(i,1); this.bs.splice(j,1); this.sc+=10; this.kil++;}});});
+    if(this.kil>=5+this.st)this.win(); }
+    drw(){ this.drawP(this.px,H-30,20,20); this.bs.forEach(b=>this.drawE(b.x,b.y,4,10,'#ff0')); this.es.forEach(e=>this.drawE(e.x,e.y,30,30,'#f0f')); }
+};
+// 7. Flappy
+GC[7] = class extends GBase {
+    rst(){ this.y=H/2; this.v=0; this.ps=[]; this.fr=0; }
+    upd(){ this.v+=0.5; this.y+=this.v; if(Inp.a)this.v=-6; if(this.fr++%90==0)this.ps.push({x:W,y:100+this.rnd(H/2)});
+    var sf=this.hasSlow?2:3; this.ps.forEach(p=>{ p.x-=sf; if(this.hit({x:50,y:this.y,w:20,h:20},{x:p.x,y:0,w:40,h:p.y})||this.hit({x:50,y:this.y,w:20,h:20},{x:p.x,y:p.y+100,w:40,h:H}))this.hurt(100); if(p.x==47)this.sc+=10; });
+    if(this.y>H||this.y<0)this.hurt(100); if(this.sc>50+this.st*20)this.win(); }
+    drw(){ this.drawP(50,this.y,20,20); this.ps.forEach(p=>{this.drawE(p.x,0,40,p.y,'#0f0'); this.drawE(p.x,p.y+100,40,H,'#0f0');}); }
+};
+// 8. Jumper
+GC[8] = class extends GBase {
+    rst(){ this.px=W/2; this.py=H-50; this.vy=0; this.pls=[{x:W/2-30,y:H-20}]; this.cam=0; }
+    upd(){ if(Inp.l)this.px-=5; if(Inp.r)this.px+=5; this.vy+=0.5; this.py+=this.vy;
+    if(this.py<H/2){this.py=H/2; this.cam-=this.vy; this.sc++;} if(this.py>H)this.hurt(100);
+    if(this.cam>80){this.cam=0; this.pls.push({x:this.rnd(W-60),y:-20});}
+    this.pls.forEach(p=>{p.y+=this.cam>0?5:0; if(this.vy>0&&this.hit({x:this.px,y:this.py+20,w:20,h:5},{x:p.x,y:p.y,w:60,h:10}))this.vy=-10;});
+    if(this.sc>200+this.st*100)this.win(); }
+    drw(){ this.drawP(this.px,this.py,20,20); this.pls.forEach(p=>this.drawE(p.x,p.y,60,10,'#fff')); }
+};
+// 9. Catcher
+GC[9] = class extends GBase {
+    rst(){ this.x=W/2; this.os=[]; this.fr=0; }
+    upd(){ if(Inp.l)this.x-=6; if(Inp.r)this.x+=6; if(this.fr++%25==0)this.os.push({x:this.rnd(W),y:0,bad:Math.random()<0.3});
+    var sf=this.hasSlow?2:4; this.os.forEach((o,i)=>{ o.y+=sf*this.mod; if(this.hit({x:this.x,y:H-40,w:40,h:20},{x:o.x,y:o.y,w:20,h:20})){ if(o.bad)this.hurt(20); else this.sc+=10; this.os.splice(i,1); } });
+    if(this.sc>200+this.st*50)this.win(); }
+    drw(){ this.drawP(this.x,H-40,40,20); this.os.forEach(o=>this.drawE(o.x,o.y,15,15,o.bad?'#f00':'#ff0')); }
+};
+// 10. Memory
+GC[10] = class extends GBase {
+    rst(){ var n=2+this.st*2; this.cs=[]; for(var i=0;i<n;i++)this.cs.push(i,i); this.cs.sort(()=>Math.random()-0.5); this.gd=this.cs.map(v=>({v,f:0,d:0})); this.sel=[]; this.cur=0; }
+    upd(){ if(Inp.r&&!this.lr)this.cur=(this.cur+1)%this.gd.length; if(Inp.a&&!this.la){ var c=this.gd[this.cur]; if(!c.f&&!c.d){ c.f=1; this.sel.push(this.cur); 
+    if(this.sel.length==2){ if(this.gd[this.sel[0]].v==this.gd[this.sel[1]].v){this.gd[this.sel[0]].d=1;this.gd[this.sel[1]].d=1; this.sc+=10;} else { var a=this.sel[0],b=this.sel[1]; setTimeout(()=>{this.gd[a].f=0;this.gd[b].f=0},500); } this.sel=[]; } } }
+    this.lr=Inp.r; this.la=Inp.a; if(this.gd.every(c=>c.d))this.win(); }
+    drw(){ var w=40,h=60; this.gd.forEach((c,i)=>{ var x=50+(i%4)*50, y=100+Math.floor(i/4)*70; if(i==this.cur)Ctx.strokeRect(x-2,y-2,w+4,h+4); Ctx.fillStyle=c.f||c.d?'#fff':'#444'; Ctx.fillRect(x,y,w,h); if(c.f||c.d){Ctx.fillStyle='#000';Ctx.fillText(c.v,x+15,y+35);} }); }
+};
+// 11. Math
+GC[11] = class extends GBase {
+    rst(){ this.q=""; this.ans=0; this.ops=[]; this.sel=0; this.tm=300; this.cnt=0; this.gen(); }
+    gen(){ var a=Math.floor(this.rnd(10)), b=Math.floor(this.rnd(10)); this.q=`${a}+${b}=?`; this.ans=a+b; this.ops=[this.ans,this.ans+1,this.ans-1].sort(()=>Math.random()-0.5); }
+    upd(){ this.tm--; if(this.tm<=0)this.hurt(100); if(Inp.l&&!this.lk)this.sel=(this.sel+2)%3; if(Inp.r&&!this.lk)this.sel=(this.sel+1)%3;
+    if(Inp.a&&!this.lk){if(this.ops[this.sel]==this.ans){this.sc+=20; this.cnt++; if(this.cnt>=3+this.st)this.win(); else{this.gen();this.tm=300;}}else this.hurt(20);} this.lk=Inp.l||Inp.r||Inp.a; }
+    drw(){ Ctx.fillStyle='#fff'; Ctx.fillText(this.q,W/2,100); this.ops.forEach((o,i)=>{Ctx.fillStyle=i==this.sel?'#0f0':'#555'; Ctx.fillText(o,W/2,200+i*50)}); Ctx.fillRect(50,50,this.tm/3,10); }
+};
+// 12. Clicker
+GC[12] = class extends GBase { rst(){this.req=30*this.mod; this.tm=300;} upd(){this.tm--; if(Inp.a&&!this.la)this.sc++; this.la=Inp.a; if(this.sc>=this.req)this.win(); if(this.tm<=0)this.hurt(100);} drw(){Ctx.fillStyle='#fff'; Ctx.fillText(this.sc+"/"+Math.floor(this.req),W/2,100); Ctx.fillRect(50,200,(this.tm/300)*200,20);}};
+// 13. Rhythm
+GC[13] = class extends GBase { rst(){this.ns=[]; this.fr=0;} upd(){if(this.fr++%40==0)this.ns.push({x:Math.random()>0.5?100:200,y:0}); this.ns.forEach((n,i)=>{n.y+=5; if(n.y>H-50&&n.y<H&&((n.x==100&&Inp.l)||(n.x==200&&Inp.r))){this.sc+=10; this.ns.splice(i,1);} if(n.y>H){this.hurt(10);this.ns.splice(i,1);}}); if(this.sc>200)this.win();} drw(){Ctx.fillStyle='#fff'; Ctx.fillRect(100,H-50,50,10); Ctx.fillRect(200,H-50,50,10); this.ns.forEach(n=>Ctx.fillRect(n.x,n.y,50,10));}};
+// 14. Tank
+GC[14] = class extends GBase { rst(){this.p={x:W/2,y:H/2,a:0}; this.bs=[]; this.es=[]; this.k=0;} upd(){if(Inp.u){this.p.x+=Math.cos(this.p.a)*2;this.p.y+=Math.sin(this.p.a)*2;} if(Inp.l)this.p.a-=0.1; if(Inp.r)this.p.a+=0.1;
+    if(Inp.a&&this.t%20==0)this.bs.push({x:this.p.x,y:this.p.y,dx:Math.cos(this.p.a)*5,dy:Math.sin(this.p.a)*5}); if(this.t%100==0)this.es.push({x:this.rnd(W),y:this.rnd(H)});
+    this.bs.forEach(b=>{b.x+=b.dx;b.y+=b.dy}); this.es.forEach((e,i)=>{if(Math.hypot(e.x-this.p.x,e.y-this.p.y)<20)this.hurt(5); this.bs.forEach((b,j)=>{if(Math.hypot(e.x-b.x,e.y-b.y)<20){this.es.splice(i,1);this.bs.splice(j,1);this.k++;}})}); if(this.k>=5+this.st)this.win();} drw(){this.drawP(this.p.x,this.p.y,20,20); this.es.forEach(e=>this.drawE(e.x,e.y,20,20,'#f00')); this.bs.forEach(b=>this.drawE(b.x,b.y,4,4,'#fff'));}};
+// 15. Frogger
+GC[15] = class extends GBase { rst(){this.y=H-20; this.x=W/2; this.cs=[];} upd(){if(Inp.u&&!this.lu)this.y-=30; if(Inp.d&&!this.ld)this.y+=30; if(Inp.l&&!this.ll)this.x-=20; if(Inp.r&&!this.lr)this.x+=20;
+    this.lu=Inp.u;this.ld=Inp.d;this.ll=Inp.l;this.lr=Inp.r; if(this.t%30==0)this.cs.push({x:-30,y:H-50-this.rnd(H-100),v:2+this.rnd(3)});
+    this.cs.forEach(c=>{c.x+=c.v; if(this.hit({x:this.x,y:this.y,w:20,h:20},{x:c.x,y:c.y,w:30,h:20}))this.hurt(100);}); if(this.y<20)this.win();} drw(){this.drawP(this.x,this.y,20,20); this.cs.forEach(c=>this.drawE(c.x,c.y,30,20,'#f00'));}};
+// 20. Slot
+GC[20] = class extends GBase { rst(){this.r=[0,0,0]; this.st=0;} upd(){if(this.st==0){this.r=this.r.map(()=>Math.floor(Math.random()*5)); if(Inp.a&&!this.la){this.st=1; if(this.r[0]==this.r[1]&&this.r[1]==this.r[2]){this.sc+=100;this.win();}else{this.hurt(10);this.st=0;}}} this.la=Inp.a;} drw(){Ctx.fillStyle='#fff'; Ctx.font='40px Arial'; Ctx.fillText(this.r.join(' '),W/2,H/2); Ctx.font='20px Arial'; Ctx.fillText("Press A to Stop",W/2,H-50);}};
+// 23. Whack
+GC[23] = class extends GBase { rst(){this.h=[{x:W/4,y:H/2},{x:W*3/4,y:H/2}]; this.c=0; this.tm=60;} upd(){var spd=Math.max(10,60-this.mod*5); if(this.tm--<=0){this.c=Math.random()>0.5?1:0;this.tm=spd;}
+    if((this.c==0&&Inp.l&&!this.lk)||(this.c==1&&Inp.r&&!this.lk))this.sc+=10; this.lk=Inp.l||Inp.r; if(this.sc>100+this.st*50)this.win();} drw(){Ctx.beginPath(); Ctx.arc(this.h[0].x,this.h[0].y,40,0,6.28); Ctx.fillStyle=this.c==0?'#f00':'#444'; Ctx.fill(); Ctx.beginPath(); Ctx.arc(this.h[1].x,this.h[1].y,40,0,6.28); Ctx.fillStyle=this.c==1?'#f00':'#444'; Ctx.fill();}};
+
+// Fills with variations
+var fills = [
+    {id:16, n:'Defense', t:'SpaceWar'}, {id:17, n:'Ninja', t:'Catcher'}, {id:18, n:'Mines', t:'Maze'}, {id:19, n:'2048', t:'Catcher'},
+    {id:21, n:'Fishing', t:'Clicker'}, {id:22, n:'Balloon', t:'SpaceWar'}, {id:24, n:'Lander', t:'Flappy'},
+    {id:25, n:'Stacker', t:'Jumper'}, {id:26, n:'Match3', t:'Memory'}, {id:27, n:'Sudoku', t:'Math'}, {id:28, n:'Typing', t:'Math'},
+    {id:29, n:'Color', t:'Memory'}, {id:30, n:'Orbit', t:'Dodger'}, {id:31, n:'Sniper', t:'Tank'}, {id:32, n:'Invader', t:'SpaceWar'},
+    {id:33, n:'Drop', t:'Catcher'}, {id:34, n:'Squash', t:'Pong'}, {id:35, n:'Maze3D', t:'Maze'}, {id:36, n:'Racer', t:'Frogger'},
+    {id:37, n:'Climb', t:'Jumper'}, {id:38, n:'Simon', t:'Memory'}, {id:39, n:'Snake2', t:'Snake'}, {id:40, n:'Boss', t:'SpaceWar'}
+];
+fills.forEach(f => {
+    var Base = GC[Object.keys(GC).find(k => GC[k].name === 'GC' + (f.t=='Maze'?1:f.t=='Snake'?2:f.t=='Pong'?3:f.t=='SpaceWar'?6:f.t=='Flappy'?7:f.t=='Jumper'?8:f.t=='Catcher'?9:f.t=='Memory'?10:f.t=='Math'?11:f.t=='Clicker'?12:f.t=='Tank'?14:f.t=='Frogger'?15:20))]; 
+    if(!Base) Base = GC[1];
+    GC[f.id] = class extends Base { init(){super.init(); this.mod*=1.2;} };
+});
+
+// Fallback
+GC[99] = class extends GBase { rst(){this.p={x:W/2,y:H/2}; this.t={x:this.rnd(W),y:this.rnd(H)};} upd(){if(Inp.l)this.p.x-=5; if(Inp.r)this.p.x+=5; if(Inp.u)this.p.y-=5; if(Inp.d)this.p.y+=5; if(this.hit(this.p,{x:this.t.x,y:this.t.y,w:10,h:10})){this.sc++; this.t={x:this.rnd(W),y:this.rnd(H)};} if(this.sc>5)this.win();} drw(){this.drawP(this.p.x,this.p.y,20,20); Ctx.fillStyle='#ff0'; Ctx.fillRect(this.t.x,this.t.y,10,10);} };
+
+for(var i=1; i<=40; i++) { if(!GC[i]) GC[i] = GC[99]; }
+
+// AI
+var AI = {
+    ask: function() {
+        var t = document.getElementById('chat-in').value; if(!t) return;
+        document.getElementById('chat-in').value='';
+        var h = document.getElementById('chat-hist');
+        h.innerHTML += `<div class="msg m-usr">${t}</div>`;
+        setTimeout(function(){
+            var a = Lang.cur==='zh-TW' ? "這是一個很棒的遊戲！" : "This is a great game!";
+            if(t.includes('help') || t.includes('救')) a = Lang.cur==='zh-TW' ? "去商店買點道具吧！" : "Buy some items in the shop!";
+            h.innerHTML += `<div class="msg m-ai">${a}</div>`;
+            h.scrollTop = h.scrollHeight;
+        }, 500);
+    }
+};
+</script>
+</body>
+</html>
